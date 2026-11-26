@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; connect-src 'self' https://*.supabase.co https://challenges.cloudflare.com; frame-src https://embed.nicovideo.jp https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>管理者画面 | 第一回 ボカロP聞き耳模擬試験</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  @media print {
+    body * { visibility: hidden; }
+    #report-print, #report-print * { visibility: visible; }
+    #report-print { position: absolute; inset: 0; color: #000; background: #fff; }
+  }
+  .report-page { page-break-after: always; padding: 12px 0; }
+  td.num, th.num { text-align: right; }
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap">
+  <span class="exam-tag">ADMIN</span>
+  <h1>管理者画面</h1>
+  <p class="muted">第一回 ボカロP聞き耳模擬試験 運営用。このページのURLは公開しないでください。</p>
+  <p id="connection-banner" class="error hidden" role="alert"></p>
+</div></header>
+
+<main class="wrap">
+  <section id="admin-login" class="card">
+    <h2>管理者ログイン</h2>
+    <p><input type="text" id="adm-email" placeholder="メールアドレス" autocomplete="username"></p>
+    <p><input type="password" id="adm-pass" placeholder="パスワード" autocomplete="current-password"></p>
+    <div class="btnrow">
+      <button class="btn" id="adm-login-btn">ログイン</button>
+      
+    </div>
+    <div id="adm-login-error"></div>
+    <p class="muted">ログインには Supabase Auth のユーザーと、admins テーブルへの登録が必要です（README参照）。</p>
+  </section>
+
+  <div id="admin-main" class="hidden">
+    <div class="btnrow">
+      <button class="btn sub" data-atab="dash">ダッシュボード</button>
+      <button class="btn sub" data-atab="examinees">受験者別データ</button>
+      <button class="btn sub" data-atab="csv">CSV出力</button>
+      <button class="btn sub" data-atab="reports">出題者個別レポート</button>
+      <button class="btn sub" data-atab="settings">設定・正解登録</button>
+      <button class="btn sub" id="adm-logout">ログアウト</button>
+    </div>
+
+    <section id="atab-dash" class="card">
+      <h2>ダッシュボード</h2>
+      <div id="dash-body">読み込み中…</div>
+    </section>
+
+    <section id="atab-examinees" class="card hidden">
+      <h2>受験者別データ</h2>
+      <p class="muted">各受験者が実際に選んだ作者を表示します。再開コードは表示されません。</p>
+      <div id="examinees-body" style="overflow-x:auto"></div>
+    </section>
+
+    <section id="atab-csv" class="card hidden">
+      <h2>CSV出力（UTF-8 BOM付き）</h2>
+      <div class="btnrow">
+        <button class="btn sub" data-csv="answers">受験者別解答一覧</button>
+        <button class="btn sub" data-csv="scores">受験者別採点結果</button>
+      </div>
+      <div class="btnrow">
+        <button class="btn sub" data-csv="questions">問題別集計</button>
+        <button class="btn sub" data-csv="comments">感想一覧</button>
+      </div>
+      <div class="btnrow">
+        <button class="btn sub" data-csv="survey">アンケート集計</button>
+        <button class="btn sub" data-csv="ranking">ランキング希望者の成績一覧</button>
+      </div>
+    </section>
+
+    <section id="atab-reports" class="card hidden">
+      <h2>出題者個別レポート</h2>
+      <p class="muted">感想は各レポート内で「除外」にチェックでき、除外したものはダウンロード・印刷に含まれません。受験者名と再開コードはレポートに含まれません。</p>
+      <div class="btnrow">
+        <button class="btn" id="report-all-print">全員分を印刷 / PDF保存</button>
+      </div>
+      <div id="reports-body"></div>
+    </section>
+
+    <section id="atab-settings" class="card hidden">
+      <h2>本番APIの保護設定</h2>
+      <p class="muted">Cloudflare Turnstileの無料ウィジェットを作成して設定してください。Secret Keyはサーバーへ保存し、画面に再表示しません。</p>
+      <p>公開サイトのOrigin（改行区切り・URLのパスは不要）<textarea id="gateway-origins" placeholder="https://gedousan-music.github.io"></textarea></p>
+      <p>Turnstileのホスト名 <input id="gateway-hostname" type="text" placeholder="gedousan-music.github.io"></p>
+      <p>Site Key（公開可）<input id="gateway-sitekey" type="text" autocomplete="off"></p>
+      <p>Secret Key（変更時のみ）<input id="gateway-secret" type="password" autocomplete="off"></p>
+      <label class="opt"><input type="checkbox" id="gateway-enabled">参加者APIを有効にする（公開承認後に設定）</label>
+      <button class="btn" id="gateway-save">保護設定を保存</button><p id="gateway-result" role="status"></p>
+      <h2>試験設定（すべて日本時間）</h2>
+<label class="opt"><input type="checkbox" id="titles-first">前編の曲名を公開（開始時刻以降・動画URL設定時のみ）</label>
+<label class="opt"><input type="checkbox" id="titles-second">後編の曲名を公開（開始時刻以降・動画URL設定時のみ）</label>
+<label class="opt"><input type="checkbox" id="results-enabled">正解・成績公開を承認（公開日時以降・全23問の正解登録時のみ）</label>
+      <p>開始日時 <input type="datetime-local" id="set-start" readonly></p>
+      <p>締切日時 <input type="datetime-local" id="set-deadline"></p>
+      <p>正解公開日時 <input type="datetime-local" id="set-reveal"></p>
+      <p>前編 動画URL <input type="text" id="set-vfirst" placeholder="https://www.nicovideo.jp/watch/sm..."></p>
+      <p>後編 動画URL <input type="text" id="set-vsecond" placeholder="https://www.nicovideo.jp/watch/sm..."></p>
+      <div class="btnrow"><button class="btn" id="set-save">設定を保存</button></div>
+      <div id="set-result"></div>
+
+      <h2>正解の登録</h2>
+      <p class="muted">動画書き出し完了後、主催者が確定した順序で登録してください。正解データはサーバー側（answers_key）にのみ保存され、公開ファイルには含まれません。</p>
+      <div id="answer-form"></div>
+      <div id="answer-result"></div>
+
+      <h2>問題の曲名・開始位置</h2>
+      <div id="question-form"></div>
+
+      <h2>参加者リンク（ニコニコ等）</h2>
+      <p class="muted">確認済みのURLだけを登録してください。推測のURLは入れないでください。</p>
+      <div id="participant-form"></div>
+    </section>
+  </div>
+
+  <div id="report-print" class="hidden"></div>
+</main>
+
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script src="api.js"></script>
+<script src="api.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
